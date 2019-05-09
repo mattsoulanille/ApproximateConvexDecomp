@@ -4,6 +4,7 @@
   "description": "Performs approximately convex decomposition of a given polygon, returning a set of polygons, each with bounded concavity.",
   "main": "index.js",
   "scripts": {
+    "build": "mkdir -p build/; tsc",
     "test": "mocha"
   },
   "repository": {
@@ -23,6 +24,10 @@
   "homepage": "https://github.com/mattsoulanille/ApproximateConvexDecomp#readme",
   "dependencies": {},
   "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.6",
+    "chai": "^4.2.0",
+    "mocha": "^6.1.4",
     "typescript": "^3.4.5"
   }
 }
