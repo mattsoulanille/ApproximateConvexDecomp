@@ -27,7 +27,7 @@ c.interactive = true;
 
 
 const g = new PIXI.Graphics();
-c.addChild(g);
+
 
 
 
@@ -90,16 +90,41 @@ function highlight(point: Vector | null) {
 
 }
 
+
+var triangles: Array<[Vector, Vector, Vector]> = [];
+
 function placeClosestPoint(event: PIXI.interaction.InteractionEvent) {
     // Construct the shortest path tree
+    if (poly1.length < 3) {
+        return;
+    }
     var pixiPoint = event.data.getLocalPosition(c);
     var point: Vector = [pixiPoint.x, pixiPoint.y];
     var closestPoint = ClosestPoint(point, poly1);
-
     var tree = new ShortestPathTree(poly1, closestPoint);
+    triangles = tree.triangulation.map(function(t) {
+        return [tree.polygon[t[0]],
+        tree.polygon[t[1]],
+        tree.polygon[t[2]]
+        ];
+    });
+    drawTriangles();
+
     console.log(tree);
 
 }
+
+var triangleGraphics = new PIXI.Graphics();
+c.addChild(triangleGraphics);
+c.addChild(g);
+function drawTriangles() {
+    triangleGraphics.clear();
+    triangleGraphics.lineStyle(2, 0x0000ff);
+    triangles.forEach(function(t) {
+        triangleGraphics.drawPolygon(MakePolygon(t));
+    });
+}
+
 
 
 function placeVertex(event: PIXI.interaction.InteractionEvent) {
@@ -150,6 +175,18 @@ placeClosestPointButton.container.position.y = 90;
 buttons.addChild(placeClosestPointButton.container);
 placeClosestPointButton.onPress = function() {
     mode = "placeClosestPoint";
+}
+
+
+const showTriangulationButton = new Button("Show/Hide Triangulation");
+showTriangulationButton.container.position.x = 10;
+showTriangulationButton.container.position.y = 130;
+buttons.addChild(showTriangulationButton.container);
+showTriangulationButton.onPress = function() {
+    triangleGraphics.visible = !triangleGraphics.visible;
+    if (triangleGraphics.visible) {
+        drawTriangles();
+    }
 }
 
 
