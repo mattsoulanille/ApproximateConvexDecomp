@@ -10,12 +10,14 @@ class ShortestPathTree {
     startVertex: Vector;
 
     // A map from vectors to their corresponding triangles in the triangulation.
-    triangulationMap: Map<Vector, Set<Triangle>>;
-    shortestPathMap: Map<Vector, Vector[]>;
+    triangulationMap: Map<number, Set<Triangle>>;
+    shortestPathMap: Map<number, number[]>;
+    startIndex: number;
 
-    constructor(poly: Polygon, startVertex: Vector) {
+    constructor(poly: Polygon, startIndex: number) {
         this.polygon = poly;
-        this.startVertex = startVertex;
+        this.startIndex = startIndex;
+        this.startVertex = this.polygon[startIndex];
 
         var flattened = earcut.flatten([this.polygon]).vertices;
         var flattenedTriangulation = earcut(flattened);
@@ -30,17 +32,16 @@ class ShortestPathTree {
 
 
     // Finds a map from each vertex of P to the shortest path from startVertex to p
-    getShortestPaths(): Map<Vector, Vector[]> {
+    getShortestPaths(): Map<number, number[]> {
 
-        var startVertexIndex = this.polygon.indexOf(this.startVertex);
-        var nextIndex = (startVertexIndex + 1) % this.polygon.length;
         var cuspIndex: number = 0;
-        var funnel: Array<Vector> = [this.startVertex, this.polygon[nextIndex]];
+        var nextIndex = (this.startIndex + 1) % this.polygon.length;
+        var funnel: Array<number> = [this.startIndex, nextIndex];
 
         return this.PATH(funnel, cuspIndex);
     }
 
-    PATH(funnel: Array<Vector>, cuspIndex: number, processed: Set<Triangle> = new Set(), pathSoFar: Array<Vector> = [this.polygon[cuspIndex]]): Map<Vector, Vector[]> {
+    PATH(funnel: Array<number>, cuspIndex: number, processed: Set<Triangle> = new Set(), pathSoFar: Array<number> = [cuspIndex]): Map<number, number[]> {
 
         let u_index = 0;
         let u = funnel[u_index];
@@ -56,7 +57,7 @@ class ShortestPathTree {
             throw new Error("Unprocessed size was " + unprocessed.size + " but should be 1");
         }
         let triangle = [...unprocessed][0];
-        let new_processed = new Set([...processed, triangle]);
+        let new_processed: Set<Triangle> = new Set([...processed, triangle]);
         // x is the third vertex of the triangle
         let x = [...this.setDifference(new Set(triangle), new Set([u, w]))][0];
 
@@ -80,7 +81,7 @@ class ShortestPathTree {
 
         var cuspIndex_f1: number;
         var cuspIndex_f2: number;
-        var newPathSoFar: Vector[];
+        var newPathSoFar: number[];
 
         // Now we know that π(s, x) = π(s, v) U vx
         // So we record this new path.
@@ -98,17 +99,15 @@ class ShortestPathTree {
         }
 
 
-        var resultingPaths: Map<Vector, Vector[]> = new Map();
+        var resultingPaths: Map<number, number[]> = new Map();
         resultingPaths.set(x, newPathSoFar);
 
-        // This is O(n)! Fix me!
-        var x_index = this.polygon.indexOf(x);
-        if (Math.abs(u_index - x_index) > 1) {
+        if (Math.abs(u_index - x) > 1) {
             resultingPaths = new Map(
                 [...resultingPaths,
                 ...this.PATH(funnel1, cuspIndex_f1, new_processed, newPathSoFar)]);
         }
-        if (Math.abs(w_index - x_index) > 1) {
+        if (Math.abs(w_index - x) > 1) {
             resultingPaths = new Map(
                 [...resultingPaths,
                 ...this.PATH(funnel2, cuspIndex_f2, new_processed, newPathSoFar)]);
@@ -117,11 +116,11 @@ class ShortestPathTree {
 
     }
 
-    findCuspIntersection(x: Vector, funnel: Array<Vector>, cuspIndex: number) {
+    findCuspIntersection(x: number, funnel: Array<number>, cuspIndex: number): number {
         let a = funnel[cuspIndex];
-        let xa: LineSegment = [x, a];
-        for (let i = 0; i < funnel.length; i++) {
-            let segment: LineSegment = [funnel[i], funnel[i + 1]];
+        let xa: LineSegment = [this.polygon[x], this.polygon[a]];
+        for (let i = 0; i < funnel.length - 1; i++) {
+            let segment: LineSegment = [this.polygon[funnel[i]], this.polygon[funnel[i + 1]]];
             if (LineSegmentIntersection(segment, xa)) {
                 if (i < cuspIndex) {
                     // Then we're moving toward the cusp
@@ -135,7 +134,6 @@ class ShortestPathTree {
                 }
             }
         }
-
         return cuspIndex;
     }
 
@@ -149,7 +147,7 @@ class ShortestPathTree {
         return new Set([...a].filter((x) => { return !b.has(x) }));
     }
 
-    getAdjacentTriangles(u: Vector, w: Vector): Set<Triangle> {
+    getAdjacentTriangles(u: number, w: number): Set<Triangle> {
         let u_adj = this.triangulationMap.get(u);
         let w_adj = this.triangulationMap.get(w);
         if (u_adj === undefined) {
@@ -164,17 +162,17 @@ class ShortestPathTree {
     }
 
 
-    computeTriangulationMap(triangulation: Triangulation): Map<Vector, Set<Triangle>> {
-        let tMap: Map<Vector, Set<Triangle>> = new Map();
+    computeTriangulationMap(triangulation: Triangulation): Map<number, Set<Triangle>> {
+        let tMap: Map<number, Set<Triangle>> = new Map();
 
         for (let i in triangulation) {
             let triangle = triangulation[i];
             for (let j in triangle) {
-                let vector = triangle[j];
+                let vertex = triangle[j];
 
-                var mapValue = tMap.get(vector);
+                var mapValue = tMap.get(vertex);
                 if (mapValue === undefined) {
-                    tMap.set(vector, new Set([triangle]));
+                    tMap.set(vertex, new Set([triangle]));
                 }
                 else {
                     mapValue.add(triangle);
@@ -188,124 +186,13 @@ class ShortestPathTree {
         var result: Triangulation = [];
         for (let index = 0; index < flat.length; index += 3) {
             let t: Triangle = [
-                this.polygon[flat[index]],
-                this.polygon[flat[index + 1]],
-                this.polygon[flat[index + 2]]
+                flat[index],
+                flat[index + 1],
+                flat[index + 2]
             ];
             result.push(t);
         }
         return result;
-    }
-
-    // private sameLineSegment(l1: Vector, l2: Vector): boolean {
-    //     return ((l1[0] == l2[0]) && (l1[1] == l2[1])) ||
-    //         ((l1[0] == l2[1]) && (l1[1] == l2[0]));
-    // }
-
-    // The same line segments are guaranteed to be == since they were looked up from this.polygon.
-
-    private dualEdgeToDiangonalUnsafe(t1: Triangle, t2: Triangle): Vector | null {
-        for (let i = 0; i < 3; i++) {
-            for (let j = i; j < 3; j++) {
-                if (t1[i] == t2[j]) {
-                    return t1[i];
-                }
-            }
-        }
-        return null
-    }
-
-    // Finds the corresponding diagonal to an edge in the dual graph
-    // of a triangulation
-    private dualEdgeToDiagonal(t1: Triangle, t2: Triangle): Vector {
-        var res = this.dualEdgeToDiangonalUnsafe(t1, t2);
-        if (res != null) {
-            return res;
-        }
-        else {
-            throw new Error(t1 + " and " + t2 + " are not adjacent triangles.");
-        }
-    }
-
-    private trianglesAdjacent(t1: Triangle, t2: Triangle): boolean {
-        return this.dualEdgeToDiangonalUnsafe(t1, t2) !== null;
-    }
-
-    computeDual(triangulation: Triangulation): Graph<Triangle> {
-        let asGraph: Graph<Triangle> = new Set(triangulation.map(
-            function(triangle) {
-                return {
-                    value: triangle,
-                    neighbors: new Set<GraphNode<Triangle>>()
-                }
-            }));
-
-        // Add edges to the graph
-        let l = [...asGraph]
-        for (let i = 0; i < l.length; i++) {
-            let node_i = l[i];
-            for (let j = i; j < l.length; j++) {
-
-                // No triangle has more than 3 neighbors
-                // Makes it better than O(n^2) I think?
-                if (node_i.neighbors.size == 3) {
-                    break;
-                }
-
-                // Assign neighbors
-                let node_j = l[j];
-                if (this.trianglesAdjacent(node_i.value, node_j.value)) {
-                    node_i.neighbors.add(node_j);
-                    node_j.neighbors.add(node_i);
-                }
-            }
-        }
-        return asGraph;
-    }
-
-    // Only applies to graphs that are trees! O(n)
-    // If you want to support polygons with holes,
-    // this will need to be modified to find the shortest path.
-    // As it stands, there is only one path since the dual of
-    // a triangulation of a holeless polygon is a tree.
-    getPathInTree<T>(a: GraphNode<T>, b: GraphNode<T>): Array<GraphNode<T>> {
-        var paths: Array<Array<GraphNode<T>>> = [[a]];
-        while (paths.length != 0) {
-            // Base case: Check if we arrived at b
-            for (let pathIndex in paths) {
-                var path = paths[pathIndex];
-                if (path[path.length - 1] == b) {
-                    return path;
-                }
-            }
-
-
-            var newPaths: Array<Array<GraphNode<T>>> = [];
-            // Inductive step: Extend the path by 1
-            for (let pathIndex in paths) {
-                var path = paths[pathIndex];
-                var last = path[path.length - 1];
-
-                // Avoid doubling back on yourself
-                var secondLast: GraphNode<T> | null;
-                if (path.length >= 2) {
-                    secondLast = path[path.length - 1];
-                }
-                else {
-                    secondLast = null;
-                }
-
-                // Don't consider where we came from.
-                var neighbors = [...last.neighbors].filter((neighbor) => { return neighbor != secondLast });
-                for (let i in neighbors) {
-                    var neighbor = neighbors[i];
-                    newPaths.push([...path, neighbor]); // Extend the current path with the neighbor
-                }
-            }
-            paths = newPaths;
-
-        }
-        throw new Error("Did not find a path between " + a + " and " + b);
     }
 }
 

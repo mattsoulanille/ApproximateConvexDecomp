@@ -1,6 +1,6 @@
 type Vector = [number, number];
 type Polygon = Array<Vector>;
-type Triangle = [Vector, Vector, Vector]
+type Triangle = [number, number, number]
 type Triangulation = Array<Triangle>
 
 type LineSegment = [Vector, Vector]

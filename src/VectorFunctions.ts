@@ -56,4 +56,27 @@ function LineSegmentIntersection(s1: LineSegment, s2: LineSegment): boolean {
 
 }
 
-export { LineSegmentIntersection };
+function DistanceSquared(v1: Vector, v2: Vector) {
+    return Math.pow(v1[0] - v2[0], 2) + Math.pow(v1[1] - v2[1], 2);
+}
+
+function ClosestPoint(target: Vector, search: Vector[]) {
+    // Returns the index of the closest point to target
+    if (search.length == 0) {
+        throw new Error("Expected search to be nonempty");
+    }
+    var closest = 0;
+    var dist = DistanceSquared(search[closest], target);
+
+    for (let i = 1; i < search.length; i++) {
+        var newDist = DistanceSquared(target, search[i]);
+        if (newDist < dist) {
+            dist = newDist;
+            closest = i;
+        }
+    }
+
+    return closest;
+}
+
+export { LineSegmentIntersection, ClosestPoint };
