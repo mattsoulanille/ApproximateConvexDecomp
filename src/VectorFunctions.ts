@@ -79,4 +79,4 @@ function ClosestPoint(target: Vector, search: Vector[]) {
     return closest;
 }
 
-export { LineSegmentIntersection, ClosestPoint };
+export { LineSegmentIntersection, ClosestPoint, Cross, VectorDifference };

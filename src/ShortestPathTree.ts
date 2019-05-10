@@ -1,6 +1,6 @@
 import { Polygon, Vector, Triangle, Triangulation, Graph, GraphNode, LineSegment } from "./PolygonTypes";
 import earcut = require("earcut");
-import { LineSegmentIntersection } from "./VectorFunctions";
+import { LineSegmentIntersection, Cross, VectorDifference } from "./VectorFunctions";
 
 
 class ShortestPathTree {
@@ -102,18 +102,67 @@ class ShortestPathTree {
         var resultingPaths: Map<number, number[]> = new Map();
         resultingPaths.set(x, newPathSoFar);
 
-        if (Math.abs(u_index - x) > 1) {
+
+
+        if (this.isDiagonal(u, x)) {
             resultingPaths = new Map(
                 [...resultingPaths,
                 ...this.PATH(funnel1, cuspIndex_f1, new_processed, newPathSoFar)]);
         }
-        if (Math.abs(w_index - x) > 1) {
+        if (this.isDiagonal(w, x)) {
             resultingPaths = new Map(
                 [...resultingPaths,
                 ...this.PATH(funnel2, cuspIndex_f2, new_processed, newPathSoFar)]);
         }
         return resultingPaths;
 
+    }
+
+    isDiagonal(a: number, b: number): boolean {
+        // Checks if ab is a diagonal of this.polygon
+        // Can this be made faster?
+
+        // First, check if a and b are adjacent
+        if ((a + 1) % this.polygon.length == b ||
+            (b + 1) % this.polygon.length == a) {
+            return false;
+        }
+
+        // Then, check if ab is entirely outside the polygon
+        // https://stackoverflow.com/questions/693837/how-to-determine-a-diagonal-is-in-or-out-of-a-concave-polygon
+
+        function tan(a: number, b: number): number {
+            return (Math.atan2(a, b) + 2 * Math.PI) % (2 * Math.PI);
+        }
+
+        var prev = ((a - 1) + this.polygon.length) % this.polygon.length;
+        var next = (a + 1) % this.polygon.length;
+        // CCW order must be prev, ab, next.
+        var origin: Vector = this.polygon[a];
+        var prev_vec: Vector = VectorDifference(this.polygon[prev], origin);
+        var next_vec: Vector = VectorDifference(this.polygon[next], origin);
+        var maybe_diagonal_vec: Vector = VectorDifference(this.polygon[b], origin);
+
+        var prev_angle = tan(prev_vec[0], prev_vec[1]);
+        var next_angle = tan(next_vec[0], next_vec[1]);
+        var maybe_diagonal_angle = tan(maybe_diagonal_vec[0], maybe_diagonal_vec[1]);
+
+        if (!((next_angle < maybe_diagonal_angle) && (maybe_diagonal_angle < prev_angle) ||
+            (maybe_diagonal_angle < prev_angle) && (prev_angle < next_angle) ||
+            (prev_angle < next_angle) && (next_angle < maybe_diagonal_angle))) {
+            return false;
+        }
+
+        // Finally, check intersections with all other segments
+        for (let i = 0; i < this.polygon.length - 1; i++) {
+            var q = this.polygon[i];
+            var r = this.polygon[i + 1];
+            if (LineSegmentIntersection([q, r], [this.polygon[a], this.polygon[b]])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     findCuspIntersection(x: number, funnel: Array<number>, cuspIndex: number): number {
