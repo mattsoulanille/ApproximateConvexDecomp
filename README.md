@@ -1,3 +1,6 @@
+# This doesn't work
+For anyone looking at this as a reference, I don't think this code actually works. Haven't touched it in years.
+
 # ApproximateConvexDecomp
 
 Performs approximately convex decomposition of a given polygon, returning a set of polygons, each with bounded concavity.
